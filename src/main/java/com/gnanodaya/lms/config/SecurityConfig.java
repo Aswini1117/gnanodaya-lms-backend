@@ -2,6 +2,7 @@ package com.gnanodaya.lms.config;
 
 import com.gnanodaya.lms.security.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,6 +15,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -23,13 +30,11 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
 
-    // ── ALL PUBLIC URLs (No Token Needed) ─────────────
+    @Value("${cors.allowed.origins}")
+    private String allowedOrigins;
+
     private static final String[] PUBLIC_URLS = {
-
-            // ── Auth APIs ──────────────────────────────
             "/api/auth/**",
-
-            // ── Swagger UI ─────────────────────────────
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs",
@@ -44,43 +49,51 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Disable CSRF (not needed for stateless JWT)
                 .csrf(csrf -> csrf.disable())
-
-                // Stateless session (JWT based)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // URL Authorization Rules
                 .authorizeHttpRequests(auth -> auth
-
-                        // ── Public URLs (No Token) ──────────────
                         .requestMatchers(PUBLIC_URLS).permitAll()
-
-                        // ── Super Admin Only ────────────────────
                         .requestMatchers("/api/super-admin/**")
                         .hasRole("SUPER_ADMIN")
-
-                        // ── Admin + Super Admin ─────────────────
                         .requestMatchers("/api/admin/**")
                         .hasAnyRole("ADMIN", "SUPER_ADMIN")
-
-                        // ── Instructor + Admin + Super Admin ────
                         .requestMatchers("/api/instructor/**")
                         .hasAnyRole("INSTRUCTOR", "ADMIN", "SUPER_ADMIN")
-
-                        // ── Student + All Roles ──────────────────
                         .requestMatchers("/api/student/**")
                         .hasAnyRole("STUDENT", "INSTRUCTOR", "ADMIN", "SUPER_ADMIN")
-
-                        // ── All Other APIs Need Token ────────────
                         .anyRequest().authenticated()
                 )
-
-                // Add JWT Filter before UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        // Add all allowed origins from application.properties
+        List<String> origins = Arrays.asList(allowedOrigins.split(","));
+        configuration.setAllowedOrigins(origins);
+
+        // Allow all HTTP methods
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
+        ));
+
+        // Allow all headers
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization", "Content-Type", "X-Requested-With"
+        ));
+
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     @Bean
