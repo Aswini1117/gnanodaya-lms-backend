@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/super-admin")
@@ -32,11 +33,22 @@ public class SuperAdminController {
         return ResponseEntity.ok(ApiResponse.success("Institute created", instituteRepository.save(institute)));
     }
 
-    @PutMapping("/institutes/{id}/toggle")
-    public ResponseEntity<ApiResponse<Institute>> toggleInstitute(@PathVariable Long id) {
+    @PutMapping("/institutes/{id}")
+    public ResponseEntity<ApiResponse<Institute>> updateInstitute(
+            @PathVariable Long id, @RequestBody Institute updated) {
         Institute institute = instituteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Institute not found"));
-        institute.setIsActive(!institute.getIsActive());
+        institute.setName(updated.getName());
+        return ResponseEntity.ok(ApiResponse.success("Updated", instituteRepository.save(institute)));
+    }
+
+    @PatchMapping("/institutes/{id}/status")
+    public ResponseEntity<ApiResponse<Institute>> updateInstituteStatus(
+            @PathVariable Long id, @RequestBody Map<String, String> body) {
+        Institute institute = instituteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Institute not found"));
+        String status = body.get("status");
+        institute.setIsActive("ACTIVE".equals(status));
         return ResponseEntity.ok(ApiResponse.success("Status updated", instituteRepository.save(institute)));
     }
 
@@ -46,11 +58,16 @@ public class SuperAdminController {
         return ResponseEntity.ok(ApiResponse.success("Admin created", userService.createUser(request)));
     }
 
-    // ── GET ADMINS BY INSTITUTE ────────────────────────────
     @GetMapping("/admins/{instituteId}")
     public ResponseEntity<ApiResponse<List<User>>> getAdminsByInstitute(
             @PathVariable Long instituteId) {
         return ResponseEntity.ok(ApiResponse.success("Admins",
                 userService.getUsersByInstituteAndRole(instituteId, "ADMIN")));
+    }
+
+    @GetMapping("/admins")
+    public ResponseEntity<ApiResponse<List<User>>> getAllAdmins() {
+        return ResponseEntity.ok(ApiResponse.success("Admins",
+                userService.getUsersByRole("ADMIN")));
     }
 }
