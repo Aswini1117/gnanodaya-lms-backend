@@ -29,20 +29,25 @@ public class Institute {
     @Column(unique = true)
     private String phone;
 
+    private String adminName;
+
     private String address;
 
     private String logo;
 
     private String website;
 
-    @Column(nullable = false)
-    private Boolean isActive;
+    private String plan;
 
-    // Trial / subscription
+    private String status;
+
+    @Column(nullable = false)
+    private Boolean isActive = true;
+
     private LocalDateTime trialEndDate;
     private String subscriptionPlan;
 
-    @JsonIgnore  // ← FIXED: prevents lazy loading error
+    @JsonIgnore
     @OneToMany(mappedBy = "institute", cascade = CascadeType.ALL)
     private List<User> users;
 
