@@ -48,6 +48,9 @@ public class UserService {
     public List<User> getUsersByInstituteAndRole(Long instituteId, String role) {
         return userRepository.findByInstituteIdAndRole(instituteId, Role.valueOf(role.toUpperCase()));
     }
+    public List<User> getUsersByRole(String role) {
+        return userRepository.findByRole(Role.valueOf(role.toUpperCase()));
+    }
 
     public User getUserById(Long id) {
         return userRepository.findById(id)
